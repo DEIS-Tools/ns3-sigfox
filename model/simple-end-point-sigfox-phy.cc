@@ -1,0 +1,293 @@
+/* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
+/*
+ * Copyright (c) 2017 University of Padova
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation;
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ * Author: Davide Magrin <davide@magr.in>
+ */
+
+#include <algorithm>
+#include "ns3/simple-end-point-sigfox-phy.h"
+#include "ns3/simulator.h"
+#include "ns3/sigfox-tag.h"
+#include "ns3/log.h"
+
+namespace ns3 {
+namespace sigfox {
+
+NS_LOG_COMPONENT_DEFINE ("SimpleEndPointSigfoxPhy");
+
+NS_OBJECT_ENSURE_REGISTERED (SimpleEndPointSigfoxPhy);
+
+TypeId
+SimpleEndPointSigfoxPhy::GetTypeId (void)
+{
+  static TypeId tid = TypeId ("ns3::SimpleEndPointSigfoxPhy")
+    .SetParent<EndPointSigfoxPhy> ()
+    .SetGroupName ("sigfox")
+    .AddConstructor<SimpleEndPointSigfoxPhy> ();
+
+  return tid;
+}
+
+// Initialize the device with some common settings.
+// These will then be changed by helpers.
+SimpleEndPointSigfoxPhy::SimpleEndPointSigfoxPhy ()
+{
+}
+
+SimpleEndPointSigfoxPhy::~SimpleEndPointSigfoxPhy ()
+{
+}
+
+void
+SimpleEndPointSigfoxPhy::Send (Ptr<Packet> packet, SigfoxTxParameters txParams,
+                              double frequencyHz, double txPowerDbm)
+{
+  NS_LOG_FUNCTION (this << packet << txParams << frequencyHz << txPowerDbm);
+
+  NS_LOG_INFO ("Current state: " << m_state);
+
+  // We must be either in STANDBY or SLEEP mode to send a packet
+  if (m_state != STANDBY && m_state != SLEEP)
+    {
+      NS_LOG_INFO ("Cannot send because device is currently not in STANDBY or SLEEP mode");
+      return;
+    }
+
+  // Compute the duration of the transmission
+  Time duration = GetOnAirTime (packet, txParams);
+    NS_LOG_DEBUG ("duration: " << duration);
+  // We can send the packet: switch to the TX state
+  SwitchToTx (txPowerDbm);
+
+  // Tag the packet
+  SigfoxTag tag;
+  packet->RemovePacketTag (tag);
+  tag.SetFrequency (frequencyHz);
+  tag.SetDurationSeconds (duration.GetSeconds ());
+  packet->AddPacketTag (tag);
+
+  // Send the packet over the channel
+  NS_LOG_INFO ("Sending the packet in the channel");
+  m_channel->Send (this, packet, txPowerDbm, txParams, duration, frequencyHz);
+
+  // Schedule the switch back to STANDBY mode.
+  // For reference see SX1272 datasheet, section 4.1.6
+  Simulator::Schedule (duration, &EndPointSigfoxPhy::SwitchToStandby, this);
+
+  // Schedule the txFinished callback, if it was set
+  // The call is scheduled just after the switch to standby in case the upper
+  // layer wishes to change the state. This ensures that it will find a PHY in
+  // STANDBY mode.
+  if (!m_txFinishedCallback.IsNull ())
+    {
+      Simulator::Schedule (duration + NanoSeconds (10),
+                           &SimpleEndPointSigfoxPhy::m_txFinishedCallback, this,
+                           packet);
+    }
+
+
+  // Call the trace source
+  if (m_device)
+    {
+      m_startSending (packet, m_device->GetNode ()->GetId ());
+    }
+  else
+    {
+      m_startSending (packet, 0);
+    }
+}
+
+void
+SimpleEndPointSigfoxPhy::StartReceive (Ptr<Packet> packet, double rxPowerDbm,
+                                       Time duration, double frequencyMHz)
+{
+
+  NS_LOG_FUNCTION (this << packet << rxPowerDbm << duration <<
+                   frequencyMHz);
+
+  // Notify the SigfoxInterferenceHelper of the impinging signal, and remember
+  // the event it creates. This will be used then to correctly handle the end
+  // of reception event.
+  //
+  // We need to do this regardless of our state or frequency, since these could
+  // change (and making the interference relevant) while the interference is
+  // still incoming.
+
+  Ptr<SigfoxInterferenceHelper::Event> event;
+  event = m_interference.Add (duration, rxPowerDbm, packet, frequencyMHz);
+
+  // Switch on the current PHY state
+  switch (m_state)
+    {
+    // In the SLEEP, TX and RX cases we cannot receive the packet: we only add
+    // it to the list of interferers and do not schedule an EndReceive event for
+    // it.
+    case SLEEP:
+      {
+        NS_LOG_INFO ("Dropping packet because device is in SLEEP state");
+        break;
+      }
+    case TX:
+      {
+        NS_LOG_INFO ("Dropping packet because device is in TX state");
+        break;
+      }
+    case STANDBY:
+      {
+        NS_LOG_INFO ("Dropping packet because device is already in STANDBY state");
+        break;
+      }
+    // If we are in STANDBY mode, we can potentially lock on the currently
+    // incoming transmission
+    case RX:
+      {
+        // There are a series of properties the packet needs to respect in order
+        // for us to be able to lock on it:
+        // - It's on frequency we are listening on
+        // - It uses the SF we are configured to look for
+        // - Its receive power is above the device sensitivity for that SF
+
+        // Flag to signal whether we can receive the packet or not
+        bool canLockOnPacket = true;
+
+        // Save needed sensitivity
+        double sensitivity = EndPointSigfoxPhy::sensitivity;
+
+        // Check frequency
+        //////////////////
+        if (!IsOnFrequency (frequencyMHz))
+          {
+            NS_LOG_INFO ("Packet lost because it's on frequency " <<
+                         frequencyMHz << " MHz and we are listening at " <<
+                         m_frequency << " MHz");
+
+            // Fire the trace source for this event.
+            if (m_device)
+              {
+                m_wrongFrequency (packet, m_device->GetNode ()->GetId ());
+              }
+            else
+              {
+                m_wrongFrequency (packet, 0);
+              }
+
+            canLockOnPacket = false;
+          }
+
+        // Check Sensitivity
+        ////////////////////
+        if (rxPowerDbm < sensitivity)
+          {
+            NS_LOG_INFO ("Dropping packet reception of packet because under the sensitivity of " <<
+                         sensitivity << " dBm");
+
+            // Fire the trace source for this event.
+            if (m_device)
+              {
+                m_underSensitivity (packet, m_device->GetNode ()->GetId ());
+              }
+            else
+              {
+                m_underSensitivity (packet, 0);
+              }
+
+            canLockOnPacket = false;
+          }
+
+        // Check if one of the above failed
+        ///////////////////////////////////
+        if (canLockOnPacket)
+          {
+            // Switch to RX state
+            // EndReceive will handle the switch back to STANDBY state
+            //SwitchToRx ();
+
+            // Schedule the end of the reception of the packet
+            NS_LOG_INFO ("Scheduling reception of a packet. End in " <<
+                         duration.GetSeconds () << " seconds");
+
+            Simulator::Schedule (duration, &SigfoxPhy::EndReceive, this, packet,
+                                 event);
+
+            // Fire the beginning of reception trace source
+            m_phyRxBeginTrace (packet);
+          }
+      }
+    }
+}
+
+void
+SimpleEndPointSigfoxPhy::EndReceive (Ptr<Packet> packet,
+                                    Ptr<SigfoxInterferenceHelper::Event> event)
+{
+  NS_LOG_FUNCTION (this << packet << event);
+
+  // Automatically switch to Standby in either case
+  //SwitchToStandby ();
+
+  // Fire the trace source
+  m_phyRxEndTrace (packet);
+
+  // Call the SigfoxInterferenceHelper to determine whether there was destructive
+  // interference on this event.
+  bool packetDestroyed = m_interference.IsDestroyedByInterference (event);
+
+  // Fire the trace source if packet was destroyed
+  if (packetDestroyed)
+    {
+      NS_LOG_INFO ("Packet destroyed by interference");
+
+      if (m_device)
+        {
+          m_interferedPacket (packet, m_device->GetNode ()->GetId ());
+        }
+      else
+        {
+          m_interferedPacket (packet, 0);
+        }
+
+      // If there is one, perform the callback to inform the upper layer of the
+      // lost packet
+      if (!m_rxFailedCallback.IsNull ())
+        {
+          m_rxFailedCallback (packet);
+        }
+
+    }
+  else
+    {
+      NS_LOG_INFO ("Packet received correctly");
+
+      if (m_device)
+        {
+          m_successfullyReceivedPacket (packet, m_device->GetNode ()->GetId ());
+        }
+      else
+        {
+          m_successfullyReceivedPacket (packet, 0);
+        }
+
+      // If there is one, perform the callback to inform the upper layer
+      if (!m_rxOkCallback.IsNull ())
+        {
+          m_rxOkCallback (packet);
+        }
+
+    }
+}
+}
+}

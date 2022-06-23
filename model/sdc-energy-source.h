@@ -21,7 +21,7 @@
 #ifndef SDC_ENERGY_SOURCE_H
 #define SDC_ENERGY_SOURCE_H
 
-#include "basic-energy-source.h"
+#include "ns3/basic-energy-source.h"
 
 namespace ns3 {
 

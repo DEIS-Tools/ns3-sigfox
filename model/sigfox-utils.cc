@@ -10,7 +10,9 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * Author: Romagnolo Stefano <romagnolostefano93@gmail.com>
+ * Author: Davide Magrin <davide@magr.in>
+ *
+ * Modified by: Michele Albano <mialb@cs.aau.dk>
  */
 
 #include "sigfox-utils.h"

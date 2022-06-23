@@ -18,7 +18,7 @@
  * Authors: Michele Albano <mialb@cs.aau.dk>
  */
 
-#include "sdc-energy-source-helper.h"
+#include "ns3/sdc-energy-source-helper.h"
 #include "ns3/energy-source.h"
 
 namespace ns3 {

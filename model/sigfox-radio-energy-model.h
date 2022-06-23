@@ -10,8 +10,9 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * Authors: Romagnolo Stefano <romagnolostefano93@gmail.com>
- *          Davide Magrin <davide@magr.in>
+ * Author: Davide Magrin <davide@magr.in>
+ *
+ * Modified by: Michele Albano <mialb@cs.aau.dk>
  */
 
 #ifndef SIGFOX_RADIO_ENERGY_MODEL_H

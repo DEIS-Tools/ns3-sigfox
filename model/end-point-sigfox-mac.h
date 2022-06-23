@@ -16,9 +16,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Author: Davide Magrin <davide@magr.in>
- *         Martina Capuzzo <capuzzom@dei.unipd.it>
+ *         Muhammad Naeem <mnaeem@cs.aau.dk>
  *
- * Modified by: Peggy Anderson <peggy.anderson@usask.ca>
+ * Modified by: Michele Albano <mialb@cs.aau.dk>
  */
 
 #ifndef END_POINT_SIGFOX_MAC_H

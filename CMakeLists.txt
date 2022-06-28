@@ -7,7 +7,7 @@ build_lib(
     helper/sigfox-helper.cc
     helper/sigfox-phy-helper.cc
     helper/forwarder-helper.cc
-#    helper/sdc-energy-source-helper.cc
+    helper/sdc-energy-source-helper.cc
     model/sigfox-utils.cc
     model/gateway-sigfox-phy.cc
     model/forwarder.cc
@@ -16,7 +16,7 @@ build_lib(
     model/end-point-sigfox-mac.cc
     model/sigfox-radio-energy-model.cc
     model/gateway-sigfox-mac.cc
-#    model/sdc-energy-source.cc
+    model/sdc-energy-source.cc
     model/sigfox-tag.cc
     model/sigfox-net-device.cc
     model/logical-sigfox-channel-helper.cc
@@ -37,7 +37,7 @@ build_lib(
     model/periodic-sender.h
     model/sigfox-mac.h
     model/forwarder.h
-#    model/sdc-energy-source.h
+    model/sdc-energy-source.h
     model/sub-band.h
     model/sigfox-channel.h
     model/sigfox-phy.cc
@@ -51,7 +51,7 @@ build_lib(
     model/sigfox-net-device.h
     model/logical-sigfox-channel-helper.h
     model/sigfox-utils.h
-#    helper/sdc-energy-source-helper.h
+    helper/sdc-energy-source-helper.h
     helper/sigfox-helper.h
     helper/forwarder-helper.h
     helper/periodic-sender-helper.h

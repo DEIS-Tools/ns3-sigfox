@@ -39,24 +39,24 @@ SdcEnergySource::GetTypeId (void)
     .SetGroupName ("Energy")
     .AddConstructor<SdcEnergySource> ()
     .AddAttribute ("SdcEnergySourceInitialEnergyJ",
-                   "Initial energy stored in SDC energy source.",
+                   "Initial energy stored in basic energy source.",
                    DoubleValue (10),  // in Joules
                    MakeDoubleAccessor (&SdcEnergySource::SetInitialEnergy,
                                        &SdcEnergySource::GetInitialEnergy),
                    MakeDoubleChecker<double> ())
     .AddAttribute ("SdcEnergySupplyVoltageV",
-                   "Initial supply voltage for SDC energy source.",
+                   "Initial supply voltage for basic energy source.",
                    DoubleValue (3.0), // in Volts
                    MakeDoubleAccessor (&SdcEnergySource::SetSupplyVoltage,
                                        &SdcEnergySource::GetSupplyVoltage),
                    MakeDoubleChecker<double> ())
     .AddAttribute ("SdcEnergyLowBatteryThreshold",
-                   "Low battery threshold for SDC energy source.",
+                   "Low battery threshold for basic energy source.",
                    DoubleValue (0.10), // as a fraction of the initial energy
                    MakeDoubleAccessor (&SdcEnergySource::m_lowBatteryTh),
                    MakeDoubleChecker<double> ())
     .AddAttribute ("SdcEnergyHighBatteryThreshold",
-                   "High battery threshold for SDC energy source.",
+                   "High battery threshold for basic energy source.",
                    DoubleValue (0.15), // as a fraction of the initial energy
                    MakeDoubleAccessor (&SdcEnergySource::m_highBatteryTh),
                    MakeDoubleChecker<double> ())
@@ -89,68 +89,6 @@ SdcEnergySource::SdcEnergySource ()
 SdcEnergySource::~SdcEnergySource ()
 {
   NS_LOG_FUNCTION (this);
-}
-
-void
-SdcEnergySource::SetInitialEnergy (double initialEnergyJ)
-{
-  NS_LOG_FUNCTION (this << initialEnergyJ);
-  NS_ASSERT (initialEnergyJ >= 0);
-  m_initialEnergyJ = initialEnergyJ;
-  m_remainingEnergyJ = m_initialEnergyJ;
-}
-
-void
-SdcEnergySource::SetSupplyVoltage (double supplyVoltageV)
-{
-  NS_LOG_FUNCTION (this << supplyVoltageV);
-  m_supplyVoltageV = supplyVoltageV;
-}
-
-void
-SdcEnergySource::SetEnergyUpdateInterval (Time interval)
-{
-  NS_LOG_FUNCTION (this << interval);
-  m_energyUpdateInterval = interval;
-}
-
-Time
-SdcEnergySource::GetEnergyUpdateInterval (void) const
-{
-  NS_LOG_FUNCTION (this);
-  return m_energyUpdateInterval;
-}
-
-double
-SdcEnergySource::GetSupplyVoltage (void) const
-{
-  NS_LOG_FUNCTION (this);
-  return m_supplyVoltageV;
-}
-
-double
-SdcEnergySource::GetInitialEnergy (void) const
-{
-  NS_LOG_FUNCTION (this);
-  return m_initialEnergyJ;
-}
-
-double
-SdcEnergySource::GetRemainingEnergy (void)
-{
-  NS_LOG_FUNCTION (this);
-  // update energy source to get the latest remaining energy.
-  UpdateEnergySource ();
-  return m_remainingEnergyJ;
-}
-
-double
-SdcEnergySource::GetEnergyFraction (void)
-{
-  NS_LOG_FUNCTION (this);
-  // update energy source to get the latest remaining energy.
-  UpdateEnergySource ();
-  return m_remainingEnergyJ / m_initialEnergyJ;
 }
 
 void
@@ -190,36 +128,6 @@ SdcEnergySource::UpdateEnergySource (void)
 /*
  * Private functions start here.
  */
-
-void
-SdcEnergySource::DoInitialize (void)
-{
-  NS_LOG_FUNCTION (this);
-  UpdateEnergySource ();  // start periodic update
-}
-
-void
-SdcEnergySource::DoDispose (void)
-{
-  NS_LOG_FUNCTION (this);
-  BreakDeviceEnergyModelRefCycle ();  // break reference cycle
-}
-
-void
-SdcEnergySource::HandleEnergyDrainedEvent (void)
-{
-  NS_LOG_FUNCTION (this);
-  NS_LOG_DEBUG ("SdcEnergySource:Energy depleted!");
-  NotifyEnergyDrained (); // notify DeviceEnergyModel objects
-}
-
-void
-SdcEnergySource::HandleEnergyRechargedEvent (void)
-{
-  NS_LOG_FUNCTION (this);
-  NS_LOG_DEBUG ("SdcEnergySource:Energy recharged!");
-  NotifyEnergyRecharged (); // notify DeviceEnergyModel objects
-}
 
 void
 SdcEnergySource::SdcCalculateRemainingEnergy (void)

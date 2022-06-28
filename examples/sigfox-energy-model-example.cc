@@ -41,6 +41,8 @@
 #include "ns3/energy-module.h"
 #include "ns3/sigfox-net-device.h"
 #include "ns3/sigfox-radio-energy-model-helper.h"
+#include "ns3/sdc-energy-source-helper.h"
+#include "ns3/sdc-energy-source.h"
 #include <algorithm>
 #include <ctime>
 #include "ns3/periodic-sender.h"
@@ -266,12 +268,12 @@ main (int argc, char *argv[])
    * Install Energy Model *
    ************************/
 
-  BasicEnergySourceHelper basicSourceHelper;
+  SdcEnergySourceHelper basicSourceHelper;
   SigfoxRadioEnergyModelHelper radioEnergyHelper;
 
   // configure energy source
-  basicSourceHelper.Set ("BasicEnergySourceInitialEnergyJ", DoubleValue (36000000)); // Energy in J
-  basicSourceHelper.Set ("BasicEnergySupplyVoltageV", DoubleValue (3.3));
+  basicSourceHelper.Set ("SdcEnergySourceInitialEnergyJ", DoubleValue (36000000)); // Energy in J
+  basicSourceHelper.Set ("SdcEnergySupplyVoltageV", DoubleValue (3.3));
 
   radioEnergyHelper.Set ("StandbyCurrentA", DoubleValue (4.3));
   //radioEnergyHelper.Set ("TxCurrentA", DoubleValue (28000));
@@ -311,7 +313,7 @@ main (int argc, char *argv[])
    * Get output *
    **************/
 
-  Ptr<BasicEnergySource> basicSourcePtr = DynamicCast<BasicEnergySource> (sources.Get (0));
+  Ptr<SdcEnergySource> basicSourcePtr = DynamicCast<SdcEnergySource> (sources.Get (0));
   //Simulator::Schedule (Seconds (60.0), &GetRemainingEnergy);
   basicSourcePtr->TraceConnectWithoutContext ("RemainingEnergy", MakeCallback (&RemainingEnergy));
 

@@ -41,6 +41,8 @@
 #include "ns3/energy-module.h"
 #include "ns3/sigfox-net-device.h"
 #include "ns3/sigfox-radio-energy-model-helper.h"
+#include "ns3/sdc-energy-source-helper.h"
+#include "ns3/sdc-energy-source.h"
 #include "ns3/config.h"
 #include "ns3/names.h"
 #include <algorithm>
@@ -257,7 +259,7 @@ main (int argc, char *argv[])
   // LogComponentEnable ("SigfoxMacHeader", LOG_LEVEL_ALL);
   // LogComponentEnable ("SimpleEndPointSigfoxPhy", LOG_LEVEL_ALL);
   // LogComponentEnable ("SigfoxRadioEnergyModel", LOG_LEVEL_ALL);
-  // LogComponentEnable ("BasicEnergySource", LOG_LEVEL_ALL);
+  // LogComponentEnable ("SdcEnergySource", LOG_LEVEL_ALL);
   // LogComponentEnable ("Forwarder", LOG_LEVEL_ALL);
   LogComponentEnableAll (LOG_PREFIX_FUNC);
   LogComponentEnableAll (LOG_PREFIX_NODE);
@@ -357,15 +359,14 @@ main (int argc, char *argv[])
    * Install Energy Model *
    ************************/
 
-  BasicEnergySourceHelper basicSourceHelper;
+  SdcEnergySourceHelper basicSourceHelper;
   SigfoxRadioEnergyModelHelper radioEnergyHelper;
 
   // configure energy source
-  basicSourceHelper.Set ("BasicEnergySourceInitialEnergyJ", DoubleValue (3600)); // Energy in J
-  basicSourceHelper.Set ("BasicEnergySupplyVoltageV", DoubleValue (3.3));
+  basicSourceHelper.Set ("SdcEnergySourceInitialEnergyJ", DoubleValue (3600)); // Energy in J
+  basicSourceHelper.Set ("SdcEnergySupplyVoltageV", DoubleValue (3.3));
 
   radioEnergyHelper.Set ("StandbyCurrentA", DoubleValue (0.0043));
-  //radioEnergyHelper.Set ("TxCurrentA", DoubleValue (28000));
   radioEnergyHelper.Set ("TxCurrentA", DoubleValue (0.047));
   radioEnergyHelper.Set ("SleepCurrentA", DoubleValue (0.02784));
   radioEnergyHelper.Set ("RxCurrentA", DoubleValue (0.019));
@@ -397,7 +398,7 @@ main (int argc, char *argv[])
      * Get output *
      **************/
 
-  Ptr<BasicEnergySource> basicSourcePtr = DynamicCast<BasicEnergySource> (sources.Get (0));
+  Ptr<SdcEnergySource> basicSourcePtr = DynamicCast<SdcEnergySource> (sources.Get (0));
   //Simulator::Schedule (Seconds (60.0), &GetRemainingEnergy);
   basicSourcePtr->TraceConnectWithoutContext ("RemainingEnergy", MakeCallback (&RemainingEnergy));
 
@@ -412,9 +413,9 @@ main (int argc, char *argv[])
   /**************
    * Get output File *
    **************/
-  std::string CSVfileName ("BatteryLevel.txt", "CurrentGraph.txt");
+/*  std::string CSVfileName ("BatteryLevel.txt", "CurrentGraph.txt");
   std::ofstream out (CSVfileName.c_str ());
-  out.close ();
+  out.close ();*/
 
   /****************
   *  Simulation  *
